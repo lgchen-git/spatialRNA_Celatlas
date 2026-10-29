@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+export PYTHONPATH="${CELATLAS_PYTHONPATH:-/opt/runtime/celatlas18/lib/python3.11/site-packages:/opt/celatlas}"
+exec "${CELATLAS_PYTHON:-/opt/runtime/celatlas18/bin/python}" "${CELATLAS_SOURCE:-/opt/celatlas}/celatlas_spatial/tools/spatial_report_generator.py" "$@"

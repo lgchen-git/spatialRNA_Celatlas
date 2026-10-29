@@ -1,0 +1,50 @@
+ARG BASE_IMAGE=illumina-pipseq-scrna:4.5.4-1
+FROM ${BASE_IMAGE}
+
+COPY runtime_probe /opt/runtime/probe
+COPY runtime_celatlas18 /opt/runtime/celatlas18
+COPY system_libs /opt/runtime/system_libs
+COPY celatlas_src /opt/celatlas
+COPY stardist_model /opt/stardist_models
+COPY project_pipeline /opt/project/pipeline
+COPY project_config /opt/project/config
+COPY docker/bin /opt/celatlas/bin
+
+RUN if [ -f /opt/runtime/celatlas18/lib/python3.11/site-packages/cv2/config.py ]; then \
+      sed -i 's#/opt/project/software/micromamba-root/envs/celatlas18-stardist-py311#/opt/runtime/celatlas18#g' \
+        /opt/runtime/celatlas18/lib/python3.11/site-packages/cv2/config.py; \
+    fi && \
+    if [ -f /opt/runtime/celatlas18/lib/python3.11/site-packages/cv2/config-3.11.py ]; then \
+      sed -i 's#/opt/project/software/micromamba-root/envs/celatlas18-stardist-py311#/opt/runtime/celatlas18#g' \
+        /opt/runtime/celatlas18/lib/python3.11/site-packages/cv2/config-3.11.py; \
+    fi
+
+RUN ln -sf libGL.so.1.7.0 /opt/runtime/system_libs/libGL.so.1 \
+    && ln -sf libGLdispatch.so.0.0.0 /opt/runtime/system_libs/libGLdispatch.so.0 \
+    && ln -sf libGLX.so.0.0.0 /opt/runtime/system_libs/libGLX.so.0 \
+    && ln -sf libX11.so.6.4.0 /opt/runtime/system_libs/libX11.so.6 \
+    && ln -sf libxcb.so.1.1.0 /opt/runtime/system_libs/libxcb.so.1 \
+    && ln -sf libXau.so.6.0.0 /opt/runtime/system_libs/libXau.so.6 \
+    && ln -sf libXdmcp.so.6.0.0 /opt/runtime/system_libs/libXdmcp.so.6 \
+    && ln -sf libbsd.so.0.11.5 /opt/runtime/system_libs/libbsd.so.0 \
+    && ln -sf libmd.so.0.0.5 /opt/runtime/system_libs/libmd.so.0
+
+ENV CELATLAS_SOURCE=/opt/celatlas \
+    CELATLAS_PYTHON=/opt/runtime/celatlas18/bin/python \
+    CELATLAS_PYTHONPATH=/opt/runtime/celatlas18/lib/python3.11/site-packages:/opt/celatlas \
+    PYTHONNOUSERSITE=1 \
+    STARDIST_MODEL_DIR=/opt/stardist_models/2D_versatile_he \
+    CELATLAS_STARDIST_MODEL_DIR=/opt/stardist_models/2D_versatile_he \
+    SSL_CERT_FILE=/opt/runtime/celatlas18/ssl/cacert.pem \
+    CURL_CA_BUNDLE=/opt/runtime/celatlas18/ssl/cacert.pem \
+    REQUESTS_CA_BUNDLE=/opt/runtime/celatlas18/ssl/cacert.pem \
+    LD_LIBRARY_PATH=/opt/runtime/system_libs:/opt/runtime/celatlas18/lib:/opt/runtime/probe/lib \
+    PATH=/opt/celatlas/bin:/opt/runtime/celatlas18/bin:/opt/runtime/probe/bin:/opt/conda/envs/workflow/bin:/opt/celatlas:$PATH \
+    TMPDIR=/workspace/tmp/docker \
+    XDG_CACHE_HOME=/workspace/tmp/xdg-cache \
+    MPLCONFIGDIR=/workspace/tmp/matplotlib \
+    NUMBA_CACHE_DIR=/workspace/tmp/numba
+
+WORKDIR /workspace
+ENTRYPOINT []
+CMD ["bash"]

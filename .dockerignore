@@ -1,0 +1,16 @@
+.git
+.agents
+.codex
+tmp
+build
+*.tar
+*.tar.gz
+*.fq.gz
+*.fastq.gz
+rawdata
+results
+reference
+ST_mask
+images
+__pycache__
+*.pyc

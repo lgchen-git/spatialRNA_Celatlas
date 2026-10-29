@@ -1,0 +1,152 @@
+"""Celatlas Spatial v1.8 workflow driven by Snakemake."""
+
+include: "rules/common.smk"
+
+
+rule all:
+    input:
+        str(stage_done("08.report"))
+
+
+rule sample:
+    input:
+        input_dir=str(INPUT_DIR)
+    output:
+        done=str(stage_done("00.sample"))
+    threads: int(config["thread"])
+    resources:
+        mem_mb=int(config["resources"]["mem_mb"])
+    benchmark: str(stage_benchmark("00.sample"))
+    log: str(stage_log("00.sample"))
+    shell: runner_command("00.sample", "00.sample") + " > {log} 2>&1"
+
+
+rule barcode:
+    input:
+        sample_done=str(stage_done("00.sample"))
+    output:
+        done=str(stage_done("01.barcode"))
+    threads: int(config["thread"])
+    resources:
+        mem_mb=int(config["resources"]["mem_mb"])
+    benchmark: str(stage_benchmark("01.barcode"))
+    log: str(stage_log("01.barcode"))
+    shell: runner_command("01.barcode", "01.barcode") + " > {log} 2>&1"
+
+
+rule cutadapt:
+    input:
+        barcode_done=str(stage_done("01.barcode"))
+    output:
+        done=str(stage_done("02.cutadapt"))
+    threads: int(config["thread"])
+    resources:
+        mem_mb=int(config["resources"]["mem_mb"])
+    benchmark: str(stage_benchmark("02.cutadapt"))
+    log: str(stage_log("02.cutadapt"))
+    shell: runner_command("02.cutadapt", "02.cutadapt") + " > {log} 2>&1"
+
+
+rule star:
+    input:
+        cutadapt_done=str(stage_done("02.cutadapt"))
+    output:
+        done=str(stage_done("03.star"))
+    threads: int(config["thread"])
+    resources:
+        mem_mb=int(config["resources"]["mem_mb"])
+    benchmark: str(stage_benchmark("03.star"))
+    log: str(stage_log("03.star"))
+    shell: runner_command("03.star", "03.star") + " > {log} 2>&1"
+
+
+rule featurecounts:
+    input:
+        star_done=str(stage_done("03.star"))
+    output:
+        done=str(stage_done("04.featureCounts"))
+    threads: int(config["featurecounts_thread"])
+    resources:
+        mem_mb=int(config["resources"]["mem_mb"])
+    benchmark: str(stage_benchmark("04.featureCounts"))
+    log: str(stage_log("04.featureCounts"))
+    shell: runner_command("04.featureCounts", "04.featureCounts") + " > {log} 2>&1"
+
+
+rule count:
+    input:
+        featurecounts_done=str(stage_done("04.featureCounts"))
+    output:
+        done=str(stage_done("05.count"))
+    threads: int(config["thread"])
+    resources:
+        mem_mb=int(config["resources"]["mem_mb"])
+    benchmark: str(stage_benchmark("05.count"))
+    log: str(stage_log("05.count"))
+    shell: runner_command("05.count", "05.count") + " > {log} 2>&1"
+
+
+rule binsegment:
+    input:
+        count_done=str(stage_done("05.count"))
+    output:
+        done=str(stage_done("06.segment/01.binsegment"))
+    threads: int(config["thread"])
+    resources:
+        mem_mb=int(config["resources"]["mem_mb"])
+    benchmark: str(stage_benchmark("06.segment/01.binsegment"))
+    log: str(stage_log("06.segment/01.binsegment"))
+    shell: runner_command("06.segment/01.binsegment", "06.segment/01.binsegment") + " > {log} 2>&1"
+
+
+rule cellsegment:
+    input:
+        binsegment_done=str(stage_done("06.segment/01.binsegment"))
+    output:
+        done=str(stage_done("06.segment/02.cellsegment"))
+    threads: int(config["thread"])
+    resources:
+        mem_mb=int(config["resources"]["mem_mb"])
+    benchmark: str(stage_benchmark("06.segment/02.cellsegment"))
+    log: str(stage_log("06.segment/02.cellsegment"))
+    shell: runner_command("06.segment/02.cellsegment", "06.segment/02.cellsegment", check_path=str(CELLSEG_LABELS)) + " > {log} 2>&1"
+
+
+rule bin_analysis:
+    input:
+        binsegment_done=str(stage_done("06.segment/01.binsegment"))
+    output:
+        done=str(stage_done("07.outs/binned_outputs"))
+    threads: int(config["thread"])
+    resources:
+        mem_mb=int(config["resources"]["mem_mb"])
+    benchmark: str(stage_benchmark("07.outs/binned_outputs"))
+    log: str(stage_log("07.outs/binned_outputs"))
+    shell: runner_command("07.outs/binned_outputs", "07.outs/binned_outputs") + " > {log} 2>&1"
+
+
+rule cell_analysis:
+    input:
+        cellsegment_done=str(stage_done("06.segment/02.cellsegment"))
+    output:
+        done=str(stage_done("07.outs/cellsegmented_outputs"))
+    threads: int(config["thread"])
+    resources:
+        mem_mb=int(config["resources"]["mem_mb"])
+    benchmark: str(stage_benchmark("07.outs/cellsegmented_outputs"))
+    log: str(stage_log("07.outs/cellsegmented_outputs"))
+    shell: runner_command("07.outs/cellsegmented_outputs", "07.outs/cellsegmented_outputs", check_path=str(CELL_METRICS)) + " > {log} 2>&1"
+
+
+rule report:
+    input:
+        bin_analysis_done=str(stage_done("07.outs/binned_outputs")),
+        cell_analysis_done=str(stage_done("07.outs/cellsegmented_outputs")),
+    output:
+        done=str(stage_done("08.report"))
+    threads: 2
+    resources:
+        mem_mb=int(config["resources"]["report_mem_mb"])
+    benchmark: str(stage_benchmark("08.report"))
+    log: str(stage_log("08.report"))
+    shell: runner_command("08.report", "08.report", check_path=str(REPORT)) + " > {log} 2>&1"
